@@ -8,6 +8,7 @@ dependencies = [
     "detectron2",
     "ipykernel>=6.29.5",
     "matplotlib>=3.10.1",
+    "opencv-python>=4.11.0.86",
     "pycocotools==2.0.8",
     "requests>=2.32.3",
     "torch>=2.7.0",
