@@ -1,3 +1,8 @@
+.idea/
+.vscode/
+.DS_Store
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -25,7 +30,6 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-data/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -131,8 +135,9 @@ celerybeat.pid
 # Environments
 .env
 .venv
+.conda
 env/
-venv/
+venv*/
 ENV/
 env.bak/
 venv.bak/
@@ -173,5 +178,5 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
-/data
-/models
+/ml/nougat-latex-base/
+/ml/nougat-latex-ocr/
