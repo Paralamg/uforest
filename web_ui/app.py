@@ -17,7 +17,7 @@ def main():
 
     pages = {
         "Главная": show_home,
-        "Image-to-Latex": show_latex_chat,
+        "Карта деревьев": show_tree_map,
         "История предсказаний": show_predictions_history,
         "История транзакций": show_transaction_history,
     }
