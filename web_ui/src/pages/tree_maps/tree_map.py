@@ -1,5 +1,6 @@
 import json
 import streamlit as st
+import rasterio
 
 from .components.map import render_tree_map
 from .components.form import render_edit_form
@@ -23,7 +24,7 @@ def show_tree_map():
             st.error("Не удалось обработать GeoTIFF. Проверьте файл.")
 
     # Загрузка данных деревьев
-    DATA_FILE = "data/trees.json"
+    DATA_FILE = ".data/trees.json"
     try:
         with open(DATA_FILE, "r", encoding="utf-8") as f:
             trees = json.load(f)
