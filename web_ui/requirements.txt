@@ -5,3 +5,4 @@ httpx==0.28.1
 pydantic-settings==2.7.1
 streamlit_folium==0.25.0
 folium==0.20.0
+rasterio==1.4.3
