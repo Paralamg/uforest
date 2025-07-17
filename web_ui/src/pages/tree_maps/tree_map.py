@@ -7,7 +7,7 @@ from streamlit_folium import st_folium
 
 
 @st.cache_data
-def load_data(n_points=1000):
+def load_data(n_points=500):
     data = {
         'lat': np.random.uniform(55.5, 56.5, n_points),
         'lon': np.random.uniform(37.3, 38.0, n_points),
