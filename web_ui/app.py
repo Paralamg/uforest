@@ -6,6 +6,8 @@ from src.pages import *
 from src.requests.balance import top_up_balance
 from src.requests.user import sign_in, sign_up, get_user_balance
 
+st.set_page_config(layout="wide")
+
 
 def main():
     if "page" not in st.session_state:

@@ -4,112 +4,144 @@ from folium.plugins import MarkerCluster
 import pandas as pd
 import numpy as np
 from streamlit_folium import st_folium
+from datetime import datetime
 
+# Глобальная настройка
+CIRCLE_RADIUS = 6
+
+MAP_TILES = {
+    "Светлая (CartoDB Positron)": "CartoDB positron",
+    "Тёмная (CartoDB Dark Matter)": "CartoDB dark_matter",
+}
 
 @st.cache_data
 def load_data(n_points=500):
+    np.random.seed(42)
+    today = pd.Timestamp.today()
     data = {
         'lat': np.random.uniform(55.5, 56.5, n_points),
         'lon': np.random.uniform(37.3, 38.0, n_points),
         'type': np.random.choice(['Дуб', 'Сосна', 'Берёза', 'Клён'], n_points),
         'age': np.random.randint(1, 100, n_points),
-        'crown_area': np.random.uniform(1, 50, n_points)
+        'crown_area': np.random.uniform(1, 50, n_points),
     }
-    return pd.DataFrame(data)
+    df = pd.DataFrame(data)
+    df['planting_date'] = today - pd.to_timedelta(df['age'] * 365, unit='D')
+    df['last_maintenance'] = today - pd.to_timedelta(np.random.randint(30, 1000, n_points), unit='D')
+    df['days_since_maintenance'] = (today - df['last_maintenance']).dt.days
+    return df
 
-# Настройка цветовой схемы
-TYPE_COLORS = {
-    'Дуб': '#1f77b4',
-    'Сосна': '#2ca02c',
-    'Берёза': '#d62728',
-    'Клён': '#9467bd'
-}
+def get_color_by_days(days):
+    if days < 365:
+        return 'green'
+    elif days < 730:
+        return 'yellow'
+    else:
+        return 'red'
 
-# Создание карты
 def create_map(filtered_df):
-    m = folium.Map(location=[55.7522, 37.6156], zoom_start=10)
-    marker_cluster = MarkerCluster().add_to(m)
+    m = folium.Map(location=[55.7522, 37.6156], zoom_start=10, control_scale=True)
+
+    for name, tile in MAP_TILES.items():
+        folium.TileLayer(tile, name=name).add_to(m)
+
+    marker_cluster = MarkerCluster(name="Деревья").add_to(m)
 
     for _, row in filtered_df.iterrows():
         popup = folium.Popup(f"""
-            Тип: {row['type']}<br>
-            Возраст: {row['age']} лет<br>
-            Площадь кроны: {row['crown_area']:.1f} м²
-        """, max_width=250)
+            <b>Тип:</b> {row['type']}<br>
+            <b>Возраст:</b> {row['age']} лет<br>
+            <b>Площадь кроны:</b> {row['crown_area']:.1f} м²<br>
+            <b>Координаты:</b> {row['lat']:.5f}, {row['lon']:.5f}<br>
+            <b>Дата посадки:</b> {row['planting_date'].date()}<br>
+            <b>Последнее обслуживание:</b> {row['last_maintenance'].date()}<br>
+            <b>Дней с последнего обслуживания:</b> {row['days_since_maintenance']}
+        """, max_width=300)
+
+        color = get_color_by_days(row['days_since_maintenance'])
 
         folium.CircleMarker(
             location=[row['lat'], row['lon']],
-            radius=row['crown_area'] / 5,
-            color=TYPE_COLORS[row['type']],
+            radius=CIRCLE_RADIUS,
+            color=color,
             fill=True,
             fill_opacity=0.7,
             popup=popup
         ).add_to(marker_cluster)
 
+    folium.LayerControl(position='topright').add_to(m)
     return m
 
 def show_tree_map():
-    # Загрузка данных (пример генерации тестовых данных)
-
-    # Интерфейс Streamlit
     st.title('🌳 Интерактивная карта деревьев')
-    st.markdown("""
-    ### Фильтры данных
-    Используйте параметры ниже для фильтрации отображаемых деревьев
-    """)
+    st.markdown("### Фильтры и настройки")
 
-    # Загрузка данных
     df = load_data()
 
-    # Фильтры в сайдбаре
     with st.sidebar:
         st.header("Параметры фильтрации")
+
         selected_types = st.multiselect(
-            'Выберите типы деревьев',
-            options=TYPE_COLORS.keys(),
-            default=list(TYPE_COLORS.keys())
+            'Типы деревьев',
+            options=df['type'].unique(),
+            default=list(df['type'].unique())
         )
 
+        age_min, age_max = int(df['age'].min()), int(df['age'].max())
         age_range = st.slider(
-            'Диапазон возраста (лет)',
-            min_value=int(df['age'].min()),
-            max_value=int(df['age'].max()),
-            value=(20, 80)
+            'Возраст (лет)',
+            min_value=age_min,
+            max_value=age_max,
+            value=(age_min, age_max)
         )
 
+        crown_min, crown_max = float(df['crown_area'].min()), float(df['crown_area'].max())
         crown_size = st.slider(
             'Площадь кроны (м²)',
-            min_value=float(df['crown_area'].min()),
-            max_value=float(df['crown_area'].max()),
-            value=(5.0, 30.0)
+            min_value=crown_min,
+            max_value=crown_max,
+            value=(crown_min, crown_max)
         )
 
-    # Применение фильтров
+        days_min, days_max = int(df['days_since_maintenance'].min()), int(df['days_since_maintenance'].max())
+        days_range = st.slider(
+            'Дней с последнего обслуживания',
+            min_value=days_min,
+            max_value=days_max,
+            value=(days_min, days_max)
+        )
+
     filtered_df = df[
         (df['type'].isin(selected_types)) &
         (df['age'].between(*age_range)) &
-        (df['crown_area'].between(*crown_size))
-        ]
+        (df['crown_area'].between(*crown_size)) &
+        (df['days_since_maintenance'].between(*days_range))
+    ]
 
-    # Отображение статистики
     st.metric("Всего деревьев на карте", filtered_df.shape[0])
 
-    # Создание и отображение карты
-    st.subheader("Карта распределения деревьев")
-    map_obj = create_map(filtered_df)
-    st_folium(map_obj, width=1200, height=600)
+    st.subheader("🗺️ Карта распределения деревьев")
 
-    # Легенда
-    st.markdown("### Легенда")
-    cols = st.columns(len(TYPE_COLORS))
-    for i, (tree_type, color) in enumerate(TYPE_COLORS.items()):
+    map_obj = create_map(filtered_df)
+    st_folium(map_obj, height=800, width=1200)
+
+    st.markdown("### 🟢 Легенда по обслуживанию")
+    legend_items = {
+        'Зелёный (<1 года)': 'green',
+        'Жёлтый (1–2 года)': 'yellow',
+        'Красный (>2 лет)': 'red'
+    }
+    cols = st.columns(len(legend_items))
+    for i, (label, color) in enumerate(legend_items.items()):
         cols[i].markdown(f"""
         <div style="display: flex; align-items: center;">
             <div style="width: 20px; height: 20px; background-color: {color}; margin-right: 10px;"></div>
-            {tree_type}
+            {label}
         </div>
         """, unsafe_allow_html=True)
 
-    # Показ сырых данных
     if st.checkbox('Показать исходные данные'):
         st.dataframe(filtered_df)
+
+# Для запуска:
+# show_tree_map()
