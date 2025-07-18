@@ -10,25 +10,47 @@ from datetime import datetime
 CIRCLE_RADIUS = 6
 
 MAP_TILES = {
-    "Светлая (CartoDB Positron)": "CartoDB positron",
     "Тёмная (CartoDB Dark Matter)": "CartoDB dark_matter",
+    "Светлая (CartoDB Positron)": "CartoDB positron",
 }
 
 @st.cache_data
 def load_data(n_points=500):
     np.random.seed(42)
     today = pd.Timestamp.today()
+
+    # Генерация случайной даты посадки за последние 100 лет
+    planting_start = today - pd.DateOffset(years=100)
+    planting_dates = pd.to_datetime(
+        np.random.randint(planting_start.value // 10**9, today.value // 10**9, n_points), unit='s'
+    )
+
+    # Генерация случайной даты последнего обслуживания (в пределах 3 лет)
+    maintenance_start = today - pd.DateOffset(years=3)
+    last_maintenance_dates = pd.to_datetime(
+        np.random.randint(maintenance_start.value // 10**9, today.value // 10**9, n_points), unit='s'
+    )
+
     data = {
         'lat': np.random.uniform(55.5, 56.5, n_points),
         'lon': np.random.uniform(37.3, 38.0, n_points),
         'type': np.random.choice(['Дуб', 'Сосна', 'Берёза', 'Клён'], n_points),
-        'age': np.random.randint(1, 100, n_points),
+        'planting_date': planting_dates,
+        'last_maintenance': last_maintenance_dates,
         'crown_area': np.random.uniform(1, 50, n_points),
     }
+
     df = pd.DataFrame(data)
-    df['planting_date'] = today - pd.to_timedelta(df['age'] * 365, unit='D')
-    df['last_maintenance'] = today - pd.to_timedelta(np.random.randint(30, 1000, n_points), unit='D')
+    df['id'] = df.index + 1  # ID начинаются с 1
+
+    today = pd.Timestamp.today()
+
+    # Вычисление возраста и дней с последнего обслуживания
+    df['age'] = df['planting_date'].apply(
+        lambda d: today.year - d.year - ((today.month, today.day) < (d.month, d.day))
+    )
     df['days_since_maintenance'] = (today - df['last_maintenance']).dt.days
+
     return df
 
 def get_color_by_days(days):
@@ -49,13 +71,14 @@ def create_map(filtered_df):
 
     for _, row in filtered_df.iterrows():
         popup = folium.Popup(f"""
+            <b>ID:</b> {row['id']}<br>
             <b>Тип:</b> {row['type']}<br>
             <b>Возраст:</b> {row['age']} лет<br>
-            <b>Площадь кроны:</b> {row['crown_area']:.1f} м²<br>
+            <b>Дней с последнего обслуживания:</b> {row['days_since_maintenance']}<br>
+            <b>Последнее обслуживание:</b> {row['last_maintenance'].strftime('%d.%m.%Y')}<br>
             <b>Координаты:</b> {row['lat']:.5f}, {row['lon']:.5f}<br>
-            <b>Дата посадки:</b> {row['planting_date'].date()}<br>
-            <b>Последнее обслуживание:</b> {row['last_maintenance'].date()}<br>
-            <b>Дней с последнего обслуживания:</b> {row['days_since_maintenance']}
+            <b>Дата посадки:</b> {row['planting_date'].strftime('%d.%m.%Y')}<br>
+            <b>Площадь кроны:</b> {row['crown_area']:.1f} м²<br>
         """, max_width=300)
 
         color = get_color_by_days(row['days_since_maintenance'])
