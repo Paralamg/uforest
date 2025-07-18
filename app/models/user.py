@@ -2,7 +2,7 @@ import datetime
 import enum
 from typing import Annotated
 
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, Enum, Float
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database.database import Base, intpk, created_at, updated_at
@@ -46,6 +46,29 @@ class Transaction(Base):
         back_populates="transactions"
     )
 
+class TreeType(enum.Enum):
+    oak = "oak"
+    pine = "pine"
+    birch = "birch"
+    maple = "maple"
+    spruce = "spruce"
+    other = "other"
+
+
+class Tree(Base):
+    __tablename__ = "trees"
+
+    id: Mapped[intpk]
+    type: Mapped[TreeType] = mapped_column(Enum(TreeType))
+    planting_date: Mapped[datetime.datetime]
+    last_maintenance: Mapped[datetime.datetime]
+    lat: Mapped[float] = mapped_column(Float, nullable=False)
+    lon: Mapped[float] = mapped_column(Float, nullable=False)
+    crown_area: Mapped[float]
+    created_at: Mapped[created_at]
+    updated_at: Mapped[updated_at]
+    prediction_id: Mapped[int] = mapped_column(ForeignKey("predictions.id", ondelete="CASCADE"))
+
 
 class Prediction(Base):
     __tablename__ = 'predictions'
@@ -56,9 +79,11 @@ class Prediction(Base):
     task_status: Mapped[str]
     input_data: Mapped[str]
     cost: Mapped[int]
-    prediction: Mapped[str | None]
     created_at: Mapped[created_at]
     updated_at: Mapped[updated_at]
+    predictions: Mapped[list["Tree"]] = relationship(
+        back_populates="predictions"
+    )
 
     user: Mapped["User"] = relationship(
         back_populates="predictions"
