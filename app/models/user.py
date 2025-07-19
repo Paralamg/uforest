@@ -68,6 +68,8 @@ class Tree(Base):
     created_at: Mapped[created_at]
     updated_at: Mapped[updated_at]
     prediction_id: Mapped[int] = mapped_column(ForeignKey("predictions.id", ondelete="CASCADE"))
+    # Добавляем правильное отношение
+    prediction: Mapped["Prediction"] = relationship(back_populates="trees")
 
 
 class Prediction(Base):
@@ -81,8 +83,10 @@ class Prediction(Base):
     cost: Mapped[int]
     created_at: Mapped[created_at]
     updated_at: Mapped[updated_at]
-    predictions: Mapped[list["Tree"]] = relationship(
-        back_populates="predictions"
+    
+    # Исправляем название отношения
+    trees: Mapped[list["Tree"]] = relationship(
+        back_populates="prediction"
     )
 
     user: Mapped["User"] = relationship(
