@@ -180,3 +180,4 @@ cython_debug/
 .pypirc
 /ml/nougat-latex-base/
 /ml/nougat-latex-ocr/
+/models
