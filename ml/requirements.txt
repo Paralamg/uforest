@@ -1,5 +1,12 @@
+torch>=2.7.0
+torchaudio>=2.7.0
+torchmetrics>=1.7.1
+torchvision>=0.22.0
 celery==5.4.0
 transformers==4.49.0
 minio==7.2.15
 pydantic-settings==2.7.1
 requests==2.32.3
+detectron2 @ git+https://github.com/facebookresearch/detectron2.git
+matplotlib>=3.10.1
+opencv-python>=4.11.0.86
