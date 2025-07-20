@@ -48,5 +48,5 @@ def predict(image_name: str):
     geotiff_bytes = load_bytes_from_minio(image_name)
     
     # Обработка файла
-    coords = process_geotiff(geotiff_bytes, model)
+    coords = process_geotiff(geotiff_bytes, model["model"])
     return coords

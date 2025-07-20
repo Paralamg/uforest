@@ -1,5 +1,5 @@
 # 1. Используем официальный PyTorch образ с поддержкой CUDA 12.1
-FROM pytorch/pytorch:2.7.1-cuda12.8-cudnn9-runtime
+FROM pytorch/pytorch:2.5.0-cuda12.4-cudnn9-runtime
 
 # 2. Обновим pip и установим зависимости системы
 RUN apt-get update && apt-get install -y \
