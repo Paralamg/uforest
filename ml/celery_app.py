@@ -4,8 +4,8 @@ from celery.signals import worker_process_init
 from config import get_settings
 from src.callback import notify_task_completion
 from src.model_loader import load_model
-from src.predict import make_predict
-from src.preprocess import load_image_from_minio
+from src.tree_detector.inference import process_geotiff
+from src.preprocess import load_bytes_from_minio
 
 settings = get_settings()
 
@@ -44,6 +44,9 @@ def predict(image_name: str):
     if model is None:
         raise ValueError("Модель не загружена")
 
-    image = load_image_from_minio(image_name)
-    sequence = make_predict(image, model)
-    return sequence
+    # Загрузка GeoTIFF из MinIO
+    geotiff_bytes = load_bytes_from_minio(image_name)
+    
+    # Обработка файла
+    coords = process_geotiff(geotiff_bytes, model)
+    return coords

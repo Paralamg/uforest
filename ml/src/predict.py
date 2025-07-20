@@ -1,10 +1,14 @@
 import torch
 from PIL import Image
 
-from .preprocess import prepare_image
-
+from .tree_detector.inference import process_geotiff
 
 def make_predict(image: Image, model: dict) -> str:
+    coords = process_geotiff("examples/68762df522caa22a41b139a5.tif", model)
+
+
+
+
     pixel_values = prepare_image(image, model["latex_processor"])
     decoder_input_ids = model["tokenizer"](model["tokenizer"].bos_token, add_special_tokens=False,
                                            return_tensors="pt").input_ids
