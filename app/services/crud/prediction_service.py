@@ -47,7 +47,7 @@ class PredictionService:
         return None
         
     
-    def create_tree(prediction: tuple, prediction_db: Prediction, session: Session):
+    def create_tree(self, prediction: tuple, prediction_db: Prediction, session: Session):
 
         tree_type = random.choice(list(TreeType))
         planting_date = datetime.datetime.now() - datetime.timedelta(days=random.randint(1, 365))
@@ -68,7 +68,7 @@ class PredictionService:
         session.commit()
         session.refresh(tree)
 
-        logging.info(f"Дерево {tree.login}: создано")
+        logging.info(f"Дерево {tree.id}: создано")
         
 
     def save_task_result_to_database(self, prediction_db: Prediction, session: Session) -> None:

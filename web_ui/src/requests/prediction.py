@@ -9,7 +9,7 @@ settings = get_settings()
 
 
 def create_task(image_bytes: bytes, filename: str) -> str | None:
-    files = {"file": (filename, image_bytes, "image/png")}
+    files = {"file": (filename, image_bytes, "image/tif")}
     with httpx.Client() as client:
         response = client.post(f"{settings.APP_SERVICE_URL}/predict/task/create",
                                headers=st.session_state.jwt,
