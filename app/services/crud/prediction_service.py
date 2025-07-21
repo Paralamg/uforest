@@ -74,10 +74,8 @@ class PredictionService:
     def save_task_result_to_database(self, prediction_db: Prediction, session: Session) -> None:
         result = self.app.AsyncResult(prediction_db.task_id)
         predictions = result.get()
-        print(predictions)
         for prediction in predictions:
             self.create_tree(prediction, prediction_db, session)
-
             
         prediction_db.status = result.status
         logging.info(f"Задача {prediction_db.task_id}: сохранена в БД")

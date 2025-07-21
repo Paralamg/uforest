@@ -72,7 +72,7 @@ def send_callback(task_id: str, callback_url: str):
             raise Exception(f"Error: {response.status_code}, {response.text}")
 
 
-@predict_route.get("/task/{id}/result")
+@predict_route.get("/task/{id}/result", response_model=List[dict])
 async def get_task_result(
         id: str,
         user: dict = Depends(authenticate),
@@ -82,7 +82,13 @@ async def get_task_result(
 
     prediction_db = prediction_services['main'].get_prediction_database_by_task_id(id, session)
 
-    return {"prediction": prediction_db.prediction}
+    return [
+        {
+            "lat": tree.lat,
+            "lon": tree.lon
+        }
+        for tree in prediction_db.trees
+    ]
 
 
 @predict_route.get("/history", response_model=List[dict])
