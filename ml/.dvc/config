@@ -1,0 +1,6 @@
+[core]
+    remote = my_s3_bucket
+['remote "my_s3_bucket"']
+    url = s3://dmitrij-klimov-twn5799
+    ssl_verify = false
+    endpointurl = https://s3.lab.karpov.courses

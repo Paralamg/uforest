@@ -33,9 +33,6 @@ def load_image_from_url(url) -> Image:
         print("Ошибка загрузки изображения")
 
 
-def load_image_from_minio(image_name) -> Image:
-    with minio_client.get_object(settings.MINIO_BUCKET_NAME, image_name) as response:
-        image_bytes = response.read()
-
-    image = Image.open(BytesIO(image_bytes))
-    return image
+def load_bytes_from_minio(file_name: str) -> bytes:
+    with minio_client.get_object(settings.MINIO_BUCKET_NAME, file_name) as response:
+        return response.read()

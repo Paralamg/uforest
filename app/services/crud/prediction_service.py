@@ -1,3 +1,6 @@
+import random
+import datetime
+
 from typing import Sequence
 
 from celery import Celery
@@ -5,10 +8,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from config import get_settings
-from models.user import User, Prediction
+from models.user import User, Prediction, Tree, TreeType
 from .balance_service import BalanceService
 from ..image_service import ImageService
 from ..logger import get_logger
+
 
 image_service = ImageService()
 settings = get_settings()
@@ -41,14 +45,42 @@ class PredictionService:
             return task.id
         logging.error(f"Ошибка: создание задачи {task.id}, пользователь {user.login} ")
         return None
+        
+    
+    def create_tree(self, prediction: tuple, prediction_db: Prediction, session: Session):
+
+        tree_type = random.choice(list(TreeType))
+        planting_date = datetime.datetime.now() - datetime.timedelta(days=random.randint(1, 365))
+        last_maintenance = datetime.datetime.now() - datetime.timedelta(days=random.randint(1, 30))
+        crown_area = random.uniform(1.0, 100.0)  # Площадь кроны в квадратных метрах
+
+        tree = Tree(
+            type=tree_type,
+            planting_date=planting_date,
+            last_maintenance=last_maintenance,
+            lat=prediction[0],
+            lon=prediction[1],
+            crown_area=crown_area,
+            prediction_id=prediction_db.id
+
+        )
+        session.add(tree)
+        session.commit()
+        session.refresh(tree)
+
+        logging.info(f"Дерево {tree.id}: создано")
+        
 
     def save_task_result_to_database(self, prediction_db: Prediction, session: Session) -> None:
         result = self.app.AsyncResult(prediction_db.task_id)
-        prediction = result.get()
-        prediction_db.prediction = prediction
-        prediction_db.status = result.status
+        predictions = result.get()
+        for prediction in predictions:
+            self.create_tree(prediction, prediction_db, session)
+            
+        prediction_db.task_status = "READY"
         logging.info(f"Задача {prediction_db.task_id}: сохранена в БД")
         session.commit()
+    
 
     def get_task_result(self, task_id, session: Session) -> str | None:
         prediction_db = self.get_prediction_database_by_task_id(task_id, session)

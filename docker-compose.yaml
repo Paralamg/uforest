@@ -45,14 +45,19 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
 
-#  ml:
-#    build: ./ml/
-#    image: latex-to-text:latest
-#    volumes:
-#      - ./ml:/ml
-#    depends_on:
-#      - database
-#      - rabbitmq
+  ml:
+    build: ./ml/
+    image: tree-detector:latest
+    volumes:
+      - ./ml:/ml
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+    depends_on:
+      - database
+      - rabbitmq
 
   web_ui:
     build: ./web_ui/

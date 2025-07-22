@@ -1,15 +1,19 @@
 import time
 
 import streamlit as st
+import pandas as pd
 import json
 import httpx
 from config import get_settings
+from ..logger import get_logger
+
+logging = get_logger()
 
 settings = get_settings()
 
 
 def create_task(image_bytes: bytes, filename: str) -> str | None:
-    files = {"file": (filename, image_bytes, "image/png")}
+    files = {"file": (filename, image_bytes, "image/tif")}
     with httpx.Client() as client:
         response = client.post(f"{settings.APP_SERVICE_URL}/predict/task/create",
                                headers=st.session_state.jwt,
@@ -34,6 +38,53 @@ def get_task_result(task_id: str) -> str:
             return response.json()["prediction"]
         else:
             raise Exception(f"Error: {response.status_code}, {response.text}")
+
+
+def get_task_result(task_id: str):
+    """
+    Получает результаты задачи с бэкенда и преобразует в DataFrame
+    с добавлением вычисляемых полей.
+    """
+    endpoint = f"{settings.APP_SERVICE_URL}/predict/task/{task_id}/result"
+    headers = st.session_state.jwt
+    
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            response = client.get(endpoint, headers=headers)
+            response.raise_for_status()  # Проверка на ошибки HTTP
+            
+            data = response.json()
+            
+            # Если нет данных
+            if not data:
+                logging.info("Нет данных")    
+                return pd.DataFrame()
+            
+            # Преобразуем в DataFrame
+            df = pd.DataFrame(data)
+            logging.info(f"Данные получены, количество деревьев {len(df.index)}")  
+
+            # Конвертация дат в datetime
+            df['planting_date'] = pd.to_datetime(df['planting_date'])
+            df['last_maintenance'] = pd.to_datetime(df['last_maintenance'])
+            
+            # Добавляем вычисляемые поля
+            today = pd.Timestamp.today()
+            df['age'] = df['planting_date'].apply(
+                lambda d: today.year - d.year - ((today.month, today.day) < (d.month, d.day))
+            )
+            df['days_since_maintenance'] = (today - df['last_maintenance']).dt.days
+            
+            return df
+
+    except httpx.HTTPStatusError as e:
+        st.error(f"Ошибка сервера: {e.response.status_code} - {e.response.text}")
+    except httpx.RequestError as e:
+        st.error(f"Ошибка подключения: {e}")
+    except Exception as e:
+        st.error(f"Неизвестная ошибка: {str(e)}")
+    
+    return pd.DataFrame()  # Возвращаем пустой DataFrame при ошибках
 
 
 def get_prediction_history() -> json:

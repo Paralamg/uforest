@@ -6,10 +6,10 @@ psycopg-binary==3.2.4
 fastapi==0.115.8
 uvicorn==0.34.0
 celery==5.4.0
-passlib==1.7.4
 jose==1.0.0
 pillow==11.1.0
 minio==7.2.15
 python-jose==3.4.0
 python-multipart==0.0.20
 httpx==0.28.1
+passlib==1.7.4
