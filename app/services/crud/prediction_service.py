@@ -77,7 +77,7 @@ class PredictionService:
         for prediction in predictions:
             self.create_tree(prediction, prediction_db, session)
             
-        prediction_db.status = result.status
+        prediction_db.task_status = "READY"
         logging.info(f"Задача {prediction_db.task_id}: сохранена в БД")
         session.commit()
     

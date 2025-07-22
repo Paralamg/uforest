@@ -81,11 +81,19 @@ async def get_task_result(
     check_user_exists(user_db, user)
 
     prediction_db = prediction_services['main'].get_prediction_database_by_task_id(id, session)
+    if prediction_db.task_status == "STARTED":
+        return []
 
     return [
         {
+            "id": tree.id,
             "lat": tree.lat,
-            "lon": tree.lon
+            "lon": tree.lon,
+            "type": tree.type,
+            "planting_date": tree.planting_date,
+            "last_maintenance": tree.last_maintenance,
+            "crown_area": tree.crown_area,
+
         }
         for tree in prediction_db.trees
     ]

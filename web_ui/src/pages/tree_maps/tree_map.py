@@ -1,15 +1,20 @@
 import streamlit as st
 import folium
-from folium.plugins import MarkerCluster
 import pandas as pd
 import numpy as np
-from streamlit_folium import st_folium
-from datetime import datetime
 import tempfile
 import rasterio
+import time
+
+from folium.plugins import MarkerCluster
+from streamlit_folium import st_folium
+from datetime import datetime
 from rasterio.plot import reshape_as_image
 from rasterio.warp import transform_bounds
 from PIL import Image
+from typing import List
+
+from ...requests.prediction import create_task, get_task_result
 
 # Константы
 CIRCLE_RADIUS = 6
@@ -18,38 +23,20 @@ MAP_TILES = {
     "Светлая (CartoDB Positron)": "CartoDB positron",
 }
 
-@st.cache_data
-def load_data(n_points=500):
-    np.random.seed(42)
-    today = pd.Timestamp.today()
+class Result:
+    image = None
+    task_id: str | None = None
+    prediction: pd.DataFrame | None = None
 
-    planting_start = today - pd.DateOffset(years=100)
-    planting_dates = pd.to_datetime(
-        np.random.randint(planting_start.value // 10**9, today.value // 10**9, n_points), unit='s'
-    )
 
-    maintenance_start = today - pd.DateOffset(years=3)
-    last_maintenance_dates = pd.to_datetime(
-        np.random.randint(maintenance_start.value // 10**9, today.value // 10**9, n_points), unit='s'
-    )
-
-    data = {
-        'lat': np.random.uniform(55.5, 56.5, n_points),
-        'lon': np.random.uniform(37.3, 38.0, n_points),
-        'type': np.random.choice(['Дуб', 'Сосна', 'Берёза', 'Клён'], n_points),
-        'planting_date': planting_dates,
-        'last_maintenance': last_maintenance_dates,
-        'crown_area': np.random.uniform(1, 50, n_points),
-    }
-
-    df = pd.DataFrame(data)
-    df['id'] = df.index + 1
-    df['age'] = df['planting_date'].apply(
-        lambda d: today.year - d.year - ((today.month, today.day) < (d.month, d.day))
-    )
-    df['days_since_maintenance'] = (today - df['last_maintenance']).dt.days
-
-    return df
+def predict(iыage):
+    task_id = create_task(image.read(), image.name)
+    if task_id:
+        while st.session_state.result.prediction.empty:
+            time.sleep(1)
+            print("Шаг")
+            st.session_state.result.prediction = get_task_result(task_id)
+        st.rerun()
 
 def get_color_by_days(days):
     if days < 365:
@@ -141,16 +128,39 @@ def create_map(filtered_df=None, image_path=None, image_bounds=None, show_trees=
 
 def show_tree_map():
     st.title('🌳 Интерактивная карта деревьев')
+    # Инициализация состояний
+    if "uploaded_image" not in st.session_state:
+        st.session_state.uploaded_image = None
+    if "result" not in st.session_state:
+        st.session_state.result = Result()
 
-    uploaded_tiff = st.file_uploader("Загрузите изображение GeoTIFF", type=["tif", "tiff"])
     image_path, image_bounds = None, None
+    upload_container = st.container()
+    send_button_placeholder = st.empty()
 
-    if uploaded_tiff:
-        try:
-            image_path, image_bounds = process_geotiff(uploaded_tiff)
-        except Exception as e:
-            st.error("Не удалось обработать изображение: " + str(e))
-            image_path, image_bounds = None, None
+    with upload_container:
+        uploaded_file = st.file_uploader(
+            "Загрузите PNG-изображение",
+            type=["tif", "tiff"],
+        )
+
+        if uploaded_file is not None:
+            st.session_state.uploaded_image = uploaded_file
+
+    # Обработка отправки изображения
+    if st.session_state.uploaded_image is not None:
+        if send_button_placeholder.button("📤 Отправить", key="send_button"):
+            send_button_placeholder.empty()  # Мгновенно скрываем кнопку
+            image = st.session_state.uploaded_image
+            st.session_state.uploaded_image = None
+            st.session_state.result.prediction = pd.DataFrame()
+            st.session_state.result.task_id = None
+            st.session_state.result.image = image
+
+            with st.spinner("Модель обрабатывает изображение...", show_time=True):
+                st.session_state.result.prediction = predict(image)
+                image_path, image_bounds = process_geotiff(image)
+
 
     show_image = image_path is not None
 
@@ -160,9 +170,7 @@ def show_tree_map():
     else:
         show_trees = True
 
-    if show_trees:
-        df = load_data()
-
+    if show_trees and not st.session_state.result.prediction.empty:
         with st.sidebar:
             st.header("Параметры фильтрации")
             selected_types = st.multiselect(
@@ -174,6 +182,7 @@ def show_tree_map():
             crown_range = st.slider('Площадь кроны (м²)', float(df['crown_area'].min()), float(df['crown_area'].max()), (float(df['crown_area'].min()), float(df['crown_area'].max())))
             days_range = st.slider('Дней с последнего обслуживания', int(df['days_since_maintenance'].min()), int(df['days_since_maintenance'].max()), (int(df['days_since_maintenance'].min()), int(df['days_since_maintenance'].max())))
 
+        df = st.session_state.result.prediction
         filtered_df = df[
             (df['type'].isin(selected_types)) &
             (df['age'].between(*age_range)) &
