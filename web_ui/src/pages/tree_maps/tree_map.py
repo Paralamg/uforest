@@ -29,7 +29,7 @@ class Result:
     prediction: pd.DataFrame | None = None
 
 
-def predict(iыage):
+def predict(image):
     task_id = create_task(image.read(), image.name)
     if task_id:
         while st.session_state.result.prediction.empty:
