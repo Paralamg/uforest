@@ -51,15 +51,15 @@ class PredictionService:
 
         tree_type = random.choice(list(TreeType))
         planting_date = datetime.datetime.now() - datetime.timedelta(days=random.randint(1, 365))
-        last_maintenance = datetime.datetime.now() - datetime.timedelta(days=random.randint(1, 30))
+        last_maintenance = datetime.datetime.now() - datetime.timedelta(days=random.randint(1, 1500))
         crown_area = random.uniform(1.0, 100.0)  # Площадь кроны в квадратных метрах
 
         tree = Tree(
             type=tree_type,
             planting_date=planting_date,
             last_maintenance=last_maintenance,
-            lat=prediction[0],
-            lon=prediction[1],
+            lat=prediction[1],
+            lon=prediction[0],
             crown_area=crown_area,
             prediction_id=prediction_db.id
 

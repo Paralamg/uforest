@@ -1,5 +1,7 @@
 import time
 
+import numpy as np
+
 import streamlit as st
 import pandas as pd
 import json
@@ -70,10 +72,9 @@ def get_task_result(task_id: str):
             
             # Добавляем вычисляемые поля
             today = pd.Timestamp.today()
-            df['age'] = df['planting_date'].apply(
-                lambda d: today.year - d.year - ((today.month, today.day) < (d.month, d.day))
-            )
+            df['age'] = np.random.randint(2, 41, size=len(df))
             df['days_since_maintenance'] = (today - df['last_maintenance']).dt.days
+            logging.info(df)
             
             return df
 

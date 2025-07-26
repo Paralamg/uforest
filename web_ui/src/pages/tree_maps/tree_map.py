@@ -15,7 +15,9 @@ from PIL import Image
 from typing import List
 
 from ...requests.prediction import create_task, get_task_result
+from ...logger import get_logger
 
+logging = get_logger()
 # Константы
 CIRCLE_RADIUS = 6
 MAP_TILES = {
@@ -26,17 +28,20 @@ MAP_TILES = {
 class Result:
     image = None
     task_id: str | None = None
-    prediction: pd.DataFrame | None = None
+    prediction: pd.DataFrame = pd.DataFrame()
+    image_path: str | None = None
+    image_bounds = None
 
 
-def predict(image):
-    task_id = create_task(image.read(), image.name)
+
+def predict(image, name):
+    task_id = create_task(image, name)
     if task_id:
         while st.session_state.result.prediction.empty:
             time.sleep(1)
             print("Шаг")
             st.session_state.result.prediction = get_task_result(task_id)
-        st.rerun()
+        # st.rerun()
 
 def get_color_by_days(days):
     if days < 365:
@@ -48,7 +53,7 @@ def get_color_by_days(days):
 
 def process_geotiff(uploaded_file, max_width=1024):
     with tempfile.NamedTemporaryFile(delete=False, suffix=".tif") as tmp:
-        tmp.write(uploaded_file.read())
+        tmp.write(uploaded_file)
         path = tmp.name
 
     with rasterio.open(path) as src:
@@ -78,6 +83,7 @@ def process_geotiff(uploaded_file, max_width=1024):
 
 def create_map(filtered_df=None, image_path=None, image_bounds=None, show_trees=False, show_image=False):
     # Автоцентрирование по изображению или дефолтная точка
+    
     if image_bounds:
         south, west = image_bounds[0]
         north, east = image_bounds[1]
@@ -134,7 +140,6 @@ def show_tree_map():
     if "result" not in st.session_state:
         st.session_state.result = Result()
 
-    image_path, image_bounds = None, None
     upload_container = st.container()
     send_button_placeholder = st.empty()
 
@@ -155,22 +160,27 @@ def show_tree_map():
             st.session_state.uploaded_image = None
             st.session_state.result.prediction = pd.DataFrame()
             st.session_state.result.task_id = None
-            st.session_state.result.image = image
+            name = image.name
+            st.session_state.result.image = image.read()
+            st.session_state.result.image_bounds = None
+            st.session_state.result.image_path = None
+            
 
             with st.spinner("Модель обрабатывает изображение...", show_time=True):
-                st.session_state.result.prediction = predict(image)
-                image_path, image_bounds = process_geotiff(image)
+                predict(st.session_state.result.image, name)
+                st.session_state.result.image_path, st.session_state.result.image_bounds = process_geotiff(st.session_state.result.image)
+                logging.info(f"image_path {st.session_state.result.prediction}")  
 
 
-    show_image = image_path is not None
+    show_image = st.checkbox('Показать исходное изображение', value=False) and st.session_state.result.image_path is not None
 
-    if not show_image:
-        st.info("Изображение не выбрано или скрыто. Метки деревьев отключены.")
+    if st.session_state.result.prediction.empty:
         show_trees = False
     else:
         show_trees = True
 
     if show_trees and not st.session_state.result.prediction.empty:
+        df = st.session_state.result.prediction
         with st.sidebar:
             st.header("Параметры фильтрации")
             selected_types = st.multiselect(
@@ -182,7 +192,6 @@ def show_tree_map():
             crown_range = st.slider('Площадь кроны (м²)', float(df['crown_area'].min()), float(df['crown_area'].max()), (float(df['crown_area'].min()), float(df['crown_area'].max())))
             days_range = st.slider('Дней с последнего обслуживания', int(df['days_since_maintenance'].min()), int(df['days_since_maintenance'].max()), (int(df['days_since_maintenance'].min()), int(df['days_since_maintenance'].max())))
 
-        df = st.session_state.result.prediction
         filtered_df = df[
             (df['type'].isin(selected_types)) &
             (df['age'].between(*age_range)) &
@@ -196,8 +205,8 @@ def show_tree_map():
     st.subheader("🗺️ Карта")
     m = create_map(
         filtered_df=filtered_df,
-        image_path=image_path,
-        image_bounds=image_bounds,
+        image_path=st.session_state.result.image_path,
+        image_bounds=st.session_state.result.image_bounds,
         show_trees=show_trees,
         show_image=show_image
     )
